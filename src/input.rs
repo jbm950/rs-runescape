@@ -13,11 +13,13 @@ pub fn key_events(tx: mpsc::Sender<Message>) -> std::io::Result<()> {
                 _ => Message::Input(key),
             };
 
-            if tx.blocking_send(message.clone()).is_err() {
+            let should_exit = matches!(message, Message::Exit);
+
+            if tx.blocking_send(message).is_err() {
                 return Ok(());
             }
 
-            if matches!(message, Message::Exit) {
+            if should_exit {
                 return Ok(());
             }
         }

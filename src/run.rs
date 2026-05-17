@@ -12,7 +12,7 @@ pub async fn run_app(terminal: &mut DefaultTerminal) -> std::io::Result<()> {
     let mut app = App::new(tx.clone());
     let input_tx = tx.clone();
     std::thread::spawn(move || key_events(input_tx));
-    app.spawn_load_player();
+    app.request_load_player();
 
     terminal.draw(|frame| ui(frame, &mut app))?;
 

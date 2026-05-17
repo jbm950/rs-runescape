@@ -18,8 +18,8 @@ impl App {
         let mut input_field = TextArea::new(vec!["Salvsis2".to_string()]);
         input_field.move_cursor(CursorMove::End);
         Self {
-            events_tx: events_tx,
-            input_field: input_field,
+            events_tx,
+            input_field,
             player: Player::default(),
             player_loading: false,
             plot_type: PlotType::PlayerLvls,
@@ -35,30 +35,43 @@ impl App {
                 self.player = player;
             }
 
-            _ if self.player_loading => {}
-            Message::Input(key) => {
+            Message::Input(key) if !self.player_loading => {
                 self.input_field.input_without_shortcuts(key);
             }
-            Message::LoadPlayer => self.spawn_load_player(),
-            Message::TogglePlot => {
-                self.plot_type = match self.plot_type {
-                    PlotType::PlayerLvls => PlotType::PlayerXp,
-                    PlotType::PlayerXp => PlotType::PlayerLvls,
-                }
-            }
+            Message::LoadPlayer if !self.player_loading => self.request_load_player(),
+            Message::TogglePlot if !self.player_loading => self.plot_type.toggle(),
+            _ => {}
         }
     }
 
-    pub fn spawn_load_player(&mut self) {
+    pub fn request_load_player(&mut self) {
         self.player_loading = true;
-        tokio::spawn(fetch_player(
-            self.events_tx.clone(),
-            self.input_field.lines().join(""),
-        ));
+
+        let tx = self.events_tx.clone();
+        let player_name = self.player_name().clone();
+
+        tokio::spawn(async move {
+            let player = fetch_player(player_name).await;
+            tx.send(Message::PlayerLoaded(player)).await.unwrap();
+        });
+
+    }
+
+    pub fn player_name(&self) -> String {
+        self.input_field.lines().join("")
     }
 }
 
 pub enum PlotType {
     PlayerLvls,
     PlayerXp,
+}
+
+impl PlotType {
+    fn toggle(&mut self) {
+        *self = match self {
+            Self::PlayerLvls => Self::PlayerXp,
+            Self::PlayerXp => Self::PlayerLvls,
+        }
+    }
 }

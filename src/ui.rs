@@ -12,8 +12,20 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     app.input_field.set_block(Block::bordered());
 
     let bar_chart = match app.plot_type {
-        PlotType::PlayerLvls => player_levels_plot(app),
-        PlotType::PlayerXp => player_xp_plot(app),
+        PlotType::PlayerLvls => player_plot(
+            "Player Levels",
+            app.player
+                .iter_levels()
+                .map(|(name, level)| Bar::with_label(name, level))
+                .collect(),
+        ),
+        PlotType::PlayerXp => player_plot(
+            "Player Xp",
+            app.player
+                .iter_xp()
+                .map(|(name, level)| Bar::with_label(name, level))
+                .collect(),
+        ),
     };
 
     let [input_area, plot_area] =
@@ -23,41 +35,23 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     frame.render_widget(bar_chart, plot_area);
 
     if app.player_loading {
-        let popup_area = frame
-            .area()
-            .centered(Constraint::Percentage(20), Constraint::Length(3));
-        let popup_text = Paragraph::new(format!("Loading {}", app.input_field.lines().join("")))
-            .block(Block::bordered())
-            .centered();
-        frame.render_widget(Clear, popup_area);
-        frame.render_widget(popup_text, popup_area);
+        loading_popup(frame, app);
     }
 }
 
-fn player_levels_plot(app: &App) -> BarChart<'_> {
-    let bars: Vec<Bar> = app
-        .player
-        .iter_levels()
-        .map(|(name, level)| Bar::with_label(name, level))
-        .collect();
-
-    BarChart::horizontal(bars).bar_width(1).block(
-        Block::bordered()
-            .title_top("Player Levels")
-            .title_bottom(PLOT_BOTTOM),
-    )
+fn player_plot<'a>(title: &'a str, bars: Vec<Bar<'a>>) -> BarChart<'a> {
+    BarChart::horizontal(bars)
+        .bar_width(1)
+        .block(Block::bordered().title_top(title).title_bottom(PLOT_BOTTOM))
 }
 
-fn player_xp_plot(app: &App) -> BarChart<'_> {
-    let bars: Vec<Bar> = app
-        .player
-        .iter_xp()
-        .map(|(name, xp)| Bar::with_label(name, xp).text_value(""))
-        .collect();
-
-    BarChart::horizontal(bars).bar_width(1).block(
-        Block::bordered()
-            .title_top("Player Xp")
-            .title_bottom(PLOT_BOTTOM),
-    )
+fn loading_popup(frame: &mut Frame, app: &App) {
+    let popup_area = frame
+        .area()
+        .centered(Constraint::Percentage(20), Constraint::Length(3));
+    let popup_text = Paragraph::new(format!("Loading {}", app.player_name()))
+        .block(Block::bordered())
+        .centered();
+    frame.render_widget(Clear, popup_area);
+    frame.render_widget(popup_text, popup_area);
 }
